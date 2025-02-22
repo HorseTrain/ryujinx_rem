@@ -45,7 +45,7 @@ namespace ARMeilleure.Instructions
             Statistics.ResumeTimer();
         }
 
-        [UnmanagedCallersOnly]
+        //[UnmanagedCallersOnly]
         public static void SupervisorCall(ulong address, int imm)
         {
             Statistics.PauseTimer();
@@ -84,7 +84,7 @@ namespace ARMeilleure.Instructions
             return GetContext().CntfrqEl0;
         }
 
-        [UnmanagedCallersOnly]
+        //[UnmanagedCallersOnly]
         public static ulong GetCntpctEl0()
         {
             return GetContext().CntpctEl0;

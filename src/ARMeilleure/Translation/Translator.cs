@@ -8,6 +8,7 @@ using ARMeilleure.Memory;
 using ARMeilleure.State;
 using ARMeilleure.Translation.Cache;
 using ARMeilleure.Translation.PTC;
+using Gommon;
 using Ryujinx.Common;
 using System;
 using System.Collections.Concurrent;
@@ -19,7 +20,7 @@ using static ARMeilleure.IntermediateRepresentation.Operand.Factory;
 
 namespace ARMeilleure.Translation
 {
-    public class Translator
+    public unsafe class Translator
     {
         private readonly IJitMemoryAllocator _allocator;
         private readonly ConcurrentQueue<KeyValuePair<ulong, TranslatedFunction>> _oldFuncs;
@@ -36,6 +37,21 @@ namespace ARMeilleure.Translation
         private Thread[] _backgroundTranslationThreads;
         private volatile int _threadCount;
 
+        void* rem_context;
+
+        static ulong call_svc(ulong address, int svc)
+        {
+            NativeInterface.SupervisorCall(address, svc);
+
+            return address + 4;
+        }
+
+        delegate ulong call_svc_delegate(ulong address, int svc);
+        delegate ulong get_counter_delegate();
+
+        call_svc_delegate svc_function = call_svc;
+        get_counter_delegate get_counter_function = NativeInterface.GetCntpctEl0;
+        
         public Translator(IJitMemoryAllocator allocator, IMemoryManager memory, IAddressTable<ulong> functionTable)
         {
             _allocator = allocator;
@@ -55,6 +71,30 @@ namespace ARMeilleure.Translation
             Stubs = new TranslatorStubs(FunctionTable);
 
             FunctionTable.Fill = (ulong)Stubs.SlowDispatchStub;
+
+            rem_imports.aarch64_context_offsets offsets = new rem_imports.aarch64_context_offsets()
+            {
+                x_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.X)),
+                q_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.V)),
+
+                n_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.Flags)) + (int)PState.NFlag * sizeof(uint),
+                z_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.Flags)) + (int)PState.ZFlag * sizeof(uint),
+                c_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.Flags)) + (int)PState.CFlag * sizeof(uint),
+                v_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.Flags)) + (int)PState.VFlag * sizeof(uint),
+
+                exclusive_address_offset =  (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.ExclusiveAddress)),
+                exclusive_value_offset =  (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.ExclusiveValueLow)),
+
+                fpcr_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.FpFlags)),
+                fpsr_offset = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.FpFlags)) + 4,
+
+                thread_local_1 = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.TpidrEl0)),
+                thread_local_0 = (int)Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.TpidrroEl0)),
+
+                context_size = sizeof(NativeContext.NativeCtxStorage)
+            } ;
+
+            rem_context = rem_imports.create_rem_context((void*)memory.PageTablePointer, &offsets, (void*)Marshal.GetFunctionPointerForDelegate(svc_function),(void*)Marshal.GetFunctionPointerForDelegate(get_counter_function), null);
         }
 
         public IPtcLoadState LoadDiskCache(string titleIdText, string displayVersion, bool enabled, string cacheSelector)
@@ -119,17 +159,26 @@ namespace ARMeilleure.Translation
 
             NativeInterface.RegisterThread(context, Memory, this);
 
-            if (Optimizations.UseUnmanagedDispatchLoop)
+            if (true)
             {
-                Stubs.DispatchLoop(context.NativeContextPtr, address);
+                void* is_running = (byte*)context.NativeContextPtr + Marshal.OffsetOf<NativeContext.NativeCtxStorage>(nameof(NativeContext.NativeCtxStorage.Running));
+
+                address = rem_imports.jit_until_long_jump(rem_context, address, (byte*)context.NativeContextPtr, (bool*)is_running, null);
             }
             else
             {
-                do
+                if (Optimizations.UseUnmanagedDispatchLoop)
                 {
-                    address = ExecuteSingle(context, address);
+                    Stubs.DispatchLoop(context.NativeContextPtr, address);
                 }
-                while (context.Running && address != 0);
+                else
+                {
+                    do
+                    {
+                        address = ExecuteSingle(context, address);
+                    }
+                    while (context.Running && address != 0);
+                }
             }
 
             NativeInterface.UnregisterThread();
