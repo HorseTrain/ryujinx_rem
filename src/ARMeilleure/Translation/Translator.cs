@@ -46,11 +46,33 @@ namespace ARMeilleure.Translation
             return address + 4;
         }
 
+        static bool single_instruction = true;
+
+        ulong execute_single(void* context_ptr, ulong address)
+        {
+            TranslatedFunction func = GetOrTranslate(address, ExecutionMode.Aarch64);
+
+            ulong start = address;
+
+            address = func._func((IntPtr)context_ptr);
+
+            if (address != start + 4)
+            {
+                Console.WriteLine("asasd");
+
+                throw new Exception();
+            }
+
+            return address;
+        }
+
         delegate ulong call_svc_delegate(ulong address, int svc);
+        delegate ulong call_undefined_delegate(void* context, ulong address);
         delegate ulong get_counter_delegate();
 
         call_svc_delegate svc_function = call_svc;
         get_counter_delegate get_counter_function = NativeInterface.GetCntpctEl0;
+        call_undefined_delegate call_undefined_function;
         
         public Translator(IJitMemoryAllocator allocator, IMemoryManager memory, IAddressTable<ulong> functionTable)
         {
@@ -94,7 +116,9 @@ namespace ARMeilleure.Translation
                 context_size = sizeof(NativeContext.NativeCtxStorage)
             } ;
 
-            rem_context = rem_imports.create_rem_context((void*)memory.PageTablePointer, &offsets, (void*)Marshal.GetFunctionPointerForDelegate(svc_function),(void*)Marshal.GetFunctionPointerForDelegate(get_counter_function), null);
+            call_undefined_function = execute_single;
+
+            rem_context = rem_imports.create_rem_context((void*)memory.PageTablePointer, &offsets, (void*)Marshal.GetFunctionPointerForDelegate(svc_function), (void*)Marshal.GetFunctionPointerForDelegate(get_counter_function), (void*)Marshal.GetFunctionPointerForDelegate(call_undefined_function));
         }
 
         public IPtcLoadState LoadDiskCache(string titleIdText, string displayVersion, bool enabled, string cacheSelector)
@@ -460,6 +484,16 @@ namespace ARMeilleure.Translation
                         if (opCode.Instruction.Emitter != null)
                         {
                             opCode.Instruction.Emitter(context);
+
+                            if (single_instruction)
+                            {
+                                context.StoreToContext();
+
+                                context.Return(Const(opCode.Address + 4));
+
+                                break;
+                            }
+
                             if (opCode.Instruction.Name == InstName.Und && blkIndex == 0)
                             {
                                 range = new Range(rangeStart, rangeEnd);

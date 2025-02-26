@@ -4,7 +4,7 @@ namespace ARMeilleure.Translation
 {
     class TranslatedFunction
     {
-        private readonly GuestFunction _func; // Ensure that this delegate will not be garbage collected.
+        public readonly GuestFunction _func; // Ensure that this delegate will not be garbage collected.
 
         public nint FuncPointer { get; }
         public Counter<uint> CallCounter { get; }

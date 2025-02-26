@@ -1,8 +1,10 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARMeilleure", "ARMeilleure.csproj", "{79959ED2-80E7-FD6B-78BD-13A5DEFFD136}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ryujinx", "..\Ryujinx\Ryujinx.csproj", "{2D311E61-30C9-4603-BF86-1C945B1A3A25}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,6 +16,10 @@ Global
 		{79959ED2-80E7-FD6B-78BD-13A5DEFFD136}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79959ED2-80E7-FD6B-78BD-13A5DEFFD136}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{79959ED2-80E7-FD6B-78BD-13A5DEFFD136}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D311E61-30C9-4603-BF86-1C945B1A3A25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D311E61-30C9-4603-BF86-1C945B1A3A25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D311E61-30C9-4603-BF86-1C945B1A3A25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D311E61-30C9-4603-BF86-1C945B1A3A25}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

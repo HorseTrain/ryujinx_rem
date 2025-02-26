@@ -24,7 +24,7 @@ public static unsafe class rem_imports
         public int context_size;
     };
 
-    const string path = "/home/linvirt/code/rem/build/librem.so";
+    const string path = "/media/linvirt/partish/rem/build/librem.so";
 
     [DllImport(path)]
     public static extern void* create_rem_context(void* memory, aarch64_context_offsets* context_offsets, void* svc, void* get_counter, void* undefined_instruction);
