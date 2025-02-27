@@ -118,7 +118,16 @@ namespace ARMeilleure.Translation
 
             call_undefined_function = execute_single;
 
-            rem_context = rem_imports.create_rem_context((void*)memory.PageTablePointer, &offsets, (void*)Marshal.GetFunctionPointerForDelegate(svc_function), (void*)Marshal.GetFunctionPointerForDelegate(get_counter_function), (void*)Marshal.GetFunctionPointerForDelegate(call_undefined_function));
+            void* undefined = (void*)Marshal.GetFunctionPointerForDelegate(call_undefined_function);
+            //void* undefined = null;
+
+            rem_context = rem_imports.create_rem_context(
+                (void*)memory.PageTablePointer, 
+                &offsets, 
+                (void*)Marshal.GetFunctionPointerForDelegate(svc_function), 
+                (void*)Marshal.GetFunctionPointerForDelegate(get_counter_function), 
+                undefined
+            );
         }
 
         public IPtcLoadState LoadDiskCache(string titleIdText, string displayVersion, bool enabled, string cacheSelector)
